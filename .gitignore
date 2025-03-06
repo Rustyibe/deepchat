@@ -8,3 +8,6 @@ yarn.lock
 pnpm-lock.yaml
 .vscode
 .idea
+tests/fixtures/*.png
+playwright-report/**/*
+test-results/**/*
