@@ -172,7 +172,7 @@ export class McpClient {
           })
         }
         if (process.platform === 'win32') {
-          ;[`${HOME_DIR}\\.cargo\\bin`,`${HOME_DIR}\\.local\\bin`].forEach((path) => {
+          ;[`${HOME_DIR}\\.cargo\\bin`, `${HOME_DIR}\\.local\\bin`].forEach((path) => {
             env.PATH = path + ';' + env.PATH
           })
         }
@@ -190,7 +190,7 @@ export class McpClient {
           env,
           stderr: 'pipe'
         })
-      } else if (this.serverConfig.baseUrl) {
+      } else if (this.serverConfig.type === 'sse') {
         this.transport = new SSEClientTransport(new URL(this.serverConfig.baseUrl as string))
       } else {
         throw new Error(`不支持的传输类型: ${this.serverConfig.type}`)

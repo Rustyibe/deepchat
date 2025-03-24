@@ -2,7 +2,8 @@ import { IConfigPresenter } from '@shared/presenter'
 import { McpClient } from './mcpClient'
 import axios from 'axios'
 import { proxyConfig } from '@/presenter/proxyConfig'
-
+import { DirectServer } from './directServer'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 const NPM_REGISTRY_LIST = [
   'https://registry.npmjs.org/',
   'https://r.cnpmjs.org/',
@@ -13,11 +14,79 @@ export class ServerManager {
   private clients: Map<string, McpClient> = new Map()
   private configPresenter: IConfigPresenter
   private npmRegistry: string | null = null
+  private directServer: DirectServer | null = null
 
   constructor(configPresenter: IConfigPresenter) {
     this.configPresenter = configPresenter
+    this.setupDirectServer().then(() => {
+      console.log('DirectServer实例创建成功')
+    })
   }
 
+  async setupDirectServer() {
+    try {
+      console.log('创建DirectServer实例...')
+      // 创建DirectServer实例
+      this.directServer = new DirectServer({
+        info: {
+          name: 'deepchat-direct-server',
+          version: '0.1.0'
+        }
+      })
+
+      console.log('创建Direct传输...')
+      // 创建DirectTransport实例
+      const transport = this.directServer.createDirectTransport()
+
+      console.log('创建Client实例...')
+      // 创建Client实例
+      const client = new Client(
+        { name: 'deepchat-direct-client', version: '0.1.0' },
+        {
+          capabilities: {
+            resources: {},
+            tools: {},
+            prompts: {}
+          }
+        }
+      )
+
+      console.log('连接到服务器...')
+      // 连接到服务器
+      await client.connect(transport)
+      console.log('连接成功')
+
+      console.log('获取工具列表...')
+      // 获取工具列表
+      const toolsResult = await client.listTools()
+      console.log('可用工具:', toolsResult.tools)
+
+      console.log('调用sum工具...')
+      // 调用sum工具
+      const sumResult = await client.callTool({
+        name: 'sum',
+        arguments: {
+          numbers: [1, 2, 3, 4, 5]
+        }
+      })
+      console.log('求和结果:', sumResult)
+
+      console.log('调用listPresenters工具...')
+      // 调用listPresenters工具，查看项目中的Presenter
+      const presentersResult = await client.callTool({
+        name: 'listPresenters',
+        arguments: {}
+      })
+      console.log('Presenter列表:', presentersResult)
+
+      console.log('关闭连接...')
+      // 关闭连接
+      await transport.close()
+      console.log('断开连接')
+    } catch (error) {
+      console.error('执行示例时出错:', error)
+    }
+  }
   // 测试npm registry速度并返回最佳选择
   async testNpmRegistrySpeed(): Promise<string> {
     const timeout = 5000
@@ -116,6 +185,7 @@ export class ServerManager {
         clients.push(client)
       }
     }
+
     return clients
   }
 
