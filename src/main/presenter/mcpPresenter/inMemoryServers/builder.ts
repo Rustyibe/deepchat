@@ -16,7 +16,7 @@ export function getInMemoryServer(
     case 'bochaSearch':
       return new BochaSearchServer(env)
     case 'imageServer':
-      return new ImageServer(args[0], args[1])
+      return new ImageServer(args[0], args[1], args[2], args[3], args[4], args[5])
     default:
       throw new Error(`Unknown in-memory server: ${serverName}`)
   }

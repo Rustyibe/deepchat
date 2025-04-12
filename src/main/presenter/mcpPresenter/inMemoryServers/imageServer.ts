@@ -12,6 +12,7 @@ import { Transport } from '@modelcontextprotocol/sdk/shared/transport'
 import { presenter } from '@/presenter'
 import { ChatMessage, ChatMessageContent } from '../../llmProviderPresenter/baseProvider' // Corrected Import Path
 import { getModelConfig } from '@/presenter/llmProviderPresenter/modelConfigs'
+import { R2 } from 'node-cloudflare-r2'
 // import { GenerateCompletionOptions } from '@/presenter/llmProviderPresenter' // Assuming this path and type exist - using any for now
 
 // --- Zod Schemas for Tool Arguments ---
@@ -56,8 +57,18 @@ export class ImageServer {
   private server: Server
   private provider: string
   private model: string
+  private r2Client: R2 | null = null
+  private bucketName: string | null = null
 
-  constructor(provider: string, model: string) {
+  constructor(
+    provider: string,
+    model: string,
+    accountId?: string,
+    accessKeyId?: string,
+    secretAccessKey?: string,
+    endpoint?: string,
+    bucketName?: string
+  ) {
     this.provider = provider
     this.model = model
     this.server = new Server(
@@ -72,28 +83,86 @@ export class ImageServer {
       }
     )
     this.setupRequestHandlers()
+    if (accountId && accessKeyId && secretAccessKey) {
+      this.bucketName = bucketName ?? 'temp'
+      this.initializeR2Client(accountId, accessKeyId, secretAccessKey, endpoint)
+    }
   }
 
-  // No specific initialization needed for now, but can be added for upload service config
-  // public async initialize(): Promise<void> {
-  //   // Initialization logic, e.g., configure upload service client
-  // }
+  private initializeR2Client(
+    accountId: string,
+    accessKeyId: string,
+    secretAccessKey: string,
+    endpoint?: string
+  ): void {
+    try {
+      this.r2Client = new R2(
+        {
+          accountId: accountId,
+          accessKeyId: accessKeyId,
+          secretAccessKey: secretAccessKey
+        },
+        {
+          endpoint: endpoint
+        }
+      )
+
+      console.log('R2 client initialized successfully')
+    } catch (error) {
+      console.error('Failed to initialize R2 client:', error)
+      this.r2Client = null
+    }
+  }
 
   public startServer(transport: Transport): void {
     this.server.connect(transport)
   }
 
-  // --- Placeholder for Image Upload Logic ---
   private async uploadImageToService(filePath: string, fileBuffer: Buffer): Promise<string> {
-    // TODO: Implement actual image upload logic here
-    // This might involve using a library like 'axios' or a specific SDK
-    // for services like Imgur, AWS S3, Cloudinary, etc.
-    console.log(`Uploading ${filePath} (size: ${fileBuffer.length} bytes)...`)
-    // Replace with actual upload call
-    await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate network delay
-    const fakeUrl = `https://fake-upload-service.com/uploads/${path.basename(filePath)}_${Date.now()}`
-    console.log(`Upload complete: ${fakeUrl}`)
-    return fakeUrl
+    if (!this.r2Client) {
+      throw new Error('R2 client not initialized. Check your Cloudflare R2 configuration.')
+    }
+
+    try {
+      const fileName = path.basename(filePath)
+      // Create a unique file key to avoid overwriting existing files
+      const fileKey = `images/${Date.now()}-${fileName}`
+
+      // Get file mime type based on extension (or default to jpeg)
+      const fileExt = path.extname(fileName).toLowerCase()
+      const mimeType = this.getMimeType(fileExt)
+
+      // Upload the file to R2
+      const uploadResult = await this.r2Client
+        .bucket(this.bucketName ?? 'temp')
+        .upload(fileBuffer, fileKey, {}, mimeType)
+
+      console.log(`Uploaded ${filePath} to R2 with key: ${fileKey}`)
+
+      // If publicUrl is provided in R2 config, use it to construct the public URL
+      const publicUrl = uploadResult.publicUrls[0]
+
+      return publicUrl
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error(`R2 upload error: ${errorMessage}`)
+      throw new Error(`Failed to upload image to R2: ${errorMessage}`)
+    }
+  }
+
+  // Helper method to determine mime type from file extension
+  private getMimeType(extension: string): string {
+    const mimeTypes: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.svg': 'image/svg+xml',
+      '.bmp': 'image/bmp'
+    }
+
+    return mimeTypes[extension] || 'application/octet-stream'
   }
 
   // --- Placeholder for Multimodal Model Interaction ---
