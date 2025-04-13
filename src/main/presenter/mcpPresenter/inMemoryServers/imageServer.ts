@@ -59,6 +59,7 @@ export class ImageServer {
   private model: string
   private r2Client: R2 | null = null
   private bucketName: string | null = null
+  private publicUrlBase: string | undefined
 
   constructor(
     provider: string,
@@ -67,7 +68,8 @@ export class ImageServer {
     accessKeyId?: string,
     secretAccessKey?: string,
     endpoint?: string,
-    bucketName?: string
+    bucketName?: string,
+    publicUrlBase?: string
   ) {
     this.provider = provider
     this.model = model
@@ -83,10 +85,17 @@ export class ImageServer {
       }
     )
     this.setupRequestHandlers()
+    console.log('accountId', accountId)
+    console.log('accessKeyId', accessKeyId)
+    console.log('secretAccessKey', secretAccessKey)
+    console.log('endpoint', endpoint)
+    console.log('bucketName', bucketName)
+    console.log('publicUrlBase', publicUrlBase)
     if (accountId && accessKeyId && secretAccessKey) {
       this.bucketName = bucketName ?? 'temp'
       this.initializeR2Client(accountId, accessKeyId, secretAccessKey, endpoint)
     }
+    this.publicUrlBase = publicUrlBase
   }
 
   private initializeR2Client(
@@ -137,12 +146,26 @@ export class ImageServer {
         .bucket(this.bucketName ?? 'temp')
         .upload(fileBuffer, fileKey, {}, mimeType)
 
-      console.log(`Uploaded ${filePath} to R2 with key: ${fileKey}`)
+      console.log(`Uploaded ${filePath} to R2 with key: ${fileKey}`, uploadResult.uri)
 
-      // If publicUrl is provided in R2 config, use it to construct the public URL
-      const publicUrl = uploadResult.publicUrls[0]
+      // // If R2 provides a direct URI, use it
+      // if (uploadResult.uri) {
+      //   return uploadResult.uri
+      // }
 
-      return publicUrl
+      // Otherwise construct a public URL using the Cloudflare R2 public endpoint pattern
+      // This assumes you've configured public access to your R2 bucket
+      // Format: https://<accountid>.r2.dev/<bucketname>/<objectkey>
+      // Or if using Cloudflare Workers as proxy: https://<your-worker-subdomain>.workers.dev/<objectkey>
+
+      if (this.publicUrlBase) {
+        console.log(`${this.publicUrlBase.replace(/\/+$/, '')}/${fileKey}`)
+        return `${this.publicUrlBase.replace(/\/+$/, '')}/${fileKey}`
+      }
+
+      throw new Error(
+        'No public URL configuration available for R2. Please set R2_PUBLIC_URL environment variable or configure a publicUrlBase.'
+      )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.error(`R2 upload error: ${errorMessage}`)
@@ -494,7 +517,16 @@ export class ImageServer {
 // --- Usage Example (similar to FileSystemServer) ---
 // import { WebSocketServerTransport } from '@modelcontextprotocol/sdk/transport/node';
 //
-// const imageServer = new ImageServer('your-llm-provider', 'your-multimodal-model');
+// const imageServer = new ImageServer(
+//   'your-llm-provider',
+//   'your-multimodal-model',
+//   'your-cloudflare-account-id',  // R2配置
+//   'your-r2-access-key-id',
+//   'your-r2-secret-access-key',
+//   'https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com', // R2端点
+//   'your-bucket-name',
+//   'https://your-public-endpoint.com' // 公开访问URL前缀，例如Workers URL或自定义域名
+// );
 // // await imageServer.initialize(); // If initialization is added
 //
 // // Example using WebSocket transport
