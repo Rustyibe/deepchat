@@ -48,6 +48,22 @@ const isInMemoryType = computed(() => type.value === 'inmemory')
 // 判断字段是否只读(inmemory类型除了args和env外都是只读的)
 const isFieldReadOnly = computed(() => props.editMode && isInMemoryType.value)
 
+// 获取内置服务器的本地化名称和描述
+const getLocalizedName = computed(() => {
+  const name = props.serverName
+  if (isInMemoryType.value && name) {
+    return t(`mcp.inmemory.${name}.name`, name)
+  }
+  return name
+})
+
+const getLocalizedDesc = computed(() => {
+  if (isInMemoryType.value && name.value) {
+    return t(`mcp.inmemory.${name.value}.desc`, descriptions.value)
+  }
+  return descriptions.value
+})
+
 // 权限设置
 const autoApproveAll = ref(props.initialConfig?.autoApprove?.includes('all') || false)
 const autoApproveRead = ref(
@@ -331,7 +347,19 @@ const openMcpMarketplace = () => {
     <ScrollArea class="h-0 flex-grow">
       <div class="space-y-2 px-4 pb-4">
         <!-- 服务器名称 -->
-        <div class="space-y-2">
+        <!-- 本地化名称 (针对inmemory类型) -->
+        <div class="space-y-2" v-if="isInMemoryType && name">
+          <Label class="text-xs text-muted-foreground" for="localized-name">{{
+            t('settings.mcp.serverForm.name')
+          }}</Label>
+
+          <div
+            class="flex h-9 items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background opacity-50"
+          >
+            {{ getLocalizedName }}
+          </div>
+        </div>
+        <div class="space-y-2" v-else>
           <Label class="text-xs text-muted-foreground" for="server-name">{{
             t('settings.mcp.serverForm.name')
           }}</Label>
@@ -431,7 +459,18 @@ const openMcpMarketplace = () => {
         </div>
 
         <!-- 描述 -->
-        <div class="space-y-2">
+        <!-- 本地化描述 (针对inmemory类型) -->
+        <div class="space-y-2" v-if="isInMemoryType && name">
+          <Label class="text-xs text-muted-foreground" for="localized-desc">{{
+            t('settings.mcp.serverForm.descriptions')
+          }}</Label>
+          <div
+            class="flex h-9 items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background opacity-50"
+          >
+            {{ getLocalizedDesc }}
+          </div>
+        </div>
+        <div class="space-y-2" v-else>
           <Label class="text-xs text-muted-foreground" for="server-description">{{
             t('settings.mcp.serverForm.descriptions')
           }}</Label>
