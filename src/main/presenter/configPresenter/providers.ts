@@ -17,6 +17,21 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
     }
   },
   {
+    id: 'copilot',
+    name: 'GitHub Copilot',
+    apiType: 'copilot',
+    apiKey: '',
+    baseUrl: '', // Actual API calls are managed by copilotProvider.ts
+    enable: false,
+    websites: {
+      official: 'https://copilot.github.com/',
+      apiKey: '', // OAuth based
+      docs: 'https://docs.github.com/en/copilot',
+      models: '', // Model info is not explicitly listed like other providers
+      defaultBaseUrl: ''
+    }
+  },
+  {
     id: 'deepseek',
     name: 'Deepseek',
     apiType: 'deepseek',

@@ -1,6 +1,7 @@
-import { app, protocol } from 'electron'
+import { app, protocol, ipcMain } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { presenter } from './presenter'
+import { copilotService } from './presenter/llmProviderPresenter/copilotProvider'
 import { ProxyMode, proxyConfig } from './presenter/proxyConfig'
 import path from 'path'
 import fs from 'fs'
@@ -182,6 +183,45 @@ app.whenReady().then(() => {
         headers: { 'Content-Type': 'text/plain' }
       })
     }
+  })
+
+  // Register CopilotService IPC handlers
+  ipcMain.handle('copilot:get-auth-message', copilotService.getAuthMessage.bind(copilotService))
+  ipcMain.handle('copilot:get-copilot-token', copilotService.getCopilotToken.bind(copilotService))
+  ipcMain.handle('copilot:save-copilot-token', copilotService.saveCopilotToken.bind(copilotService))
+  ipcMain.handle('copilot:get-token', copilotService.getToken.bind(copilotService))
+  ipcMain.handle('copilot:logout', copilotService.logout.bind(copilotService))
+  ipcMain.handle('copilot:get-user', copilotService.getUser.bind(copilotService))
+
+  // Streaming IPC handlers for Copilot
+  ipcMain.on('copilot:request-stream', async (event, prompt, token) => {
+    try {
+      for await (const chunk of copilotService.completeStream(prompt, token)) {
+        if (event.sender.isDestroyed()) {
+          // Window might have been closed during stream
+          copilotService.cancelCurrentStream() // Attempt to cancel the ongoing stream
+          console.warn('Sender window destroyed during Copilot stream. Stream cancelled.')
+          break
+        }
+        event.sender.send('copilot:stream-chunk', chunk)
+      }
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('copilot:stream-end')
+      }
+    } catch (error: any) {
+      console.error('Error in Copilot stream:', error)
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('copilot:stream-error', {
+          message: error.message,
+          name: error.name,
+          // stack: error.stack // Stack traces can be large and might not be ideal for IPC
+        })
+      }
+    }
+  })
+
+  ipcMain.on('copilot:cancel-stream', () => {
+    copilotService.cancelCurrentStream()
   })
 })
 // Quit when all windows are closed, except on macOS. There, it's common

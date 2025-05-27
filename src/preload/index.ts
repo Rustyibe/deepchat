@@ -7,6 +7,54 @@ let cachedWebContentsId: number | undefined = undefined
 
 // Custom APIs for renderer
 const api = {
+  copilot: {
+    getAuthMessage: (headers?: Record<string, string>) =>
+      ipcRenderer.invoke('copilot:get-auth-message', headers),
+    getCopilotToken: (device_code: string, headers?: Record<string, string>) =>
+      ipcRenderer.invoke('copilot:get-copilot-token', device_code, headers),
+    saveCopilotToken: (access_token: string) =>
+      ipcRenderer.invoke('copilot:save-copilot-token', access_token),
+    getToken: (headers?: Record<string, string>) =>
+      ipcRenderer.invoke('copilot:get-token', headers),
+    logout: () => ipcRenderer.invoke('copilot:logout'),
+    getUser: (token: string) => ipcRenderer.invoke('copilot:get-user', token),
+    completeStream: (
+      prompt: string,
+      token: string,
+      onChunk: (chunk: any) => void,
+      onError: (error: any) => void,
+      onEnd: () => void
+    ) => {
+      ipcRenderer.send('copilot:request-stream', prompt, token)
+
+      // Define named handlers to easily add and remove them
+      const chunkHandler = (_event: any, chunk: any) => onChunk(chunk)
+      const errorHandler = (_event: any, error: any) => {
+        ipcRenderer.removeListener('copilot:stream-chunk', chunkHandler)
+        ipcRenderer.removeListener('copilot:stream-error', errorHandler)
+        ipcRenderer.removeListener('copilot:stream-end', endHandler)
+        onError(error)
+      }
+      const endHandler = () => {
+        ipcRenderer.removeListener('copilot:stream-chunk', chunkHandler)
+        ipcRenderer.removeListener('copilot:stream-error', errorHandler)
+        ipcRenderer.removeListener('copilot:stream-end', endHandler)
+        onEnd()
+      }
+
+      ipcRenderer.on('copilot:stream-chunk', chunkHandler)
+      ipcRenderer.on('copilot:stream-error', errorHandler)
+      ipcRenderer.on('copilot:stream-end', endHandler)
+    },
+    cancelStream: () => {
+      ipcRenderer.send('copilot:cancel-stream')
+      // Removing listeners here might be redundant if end/error handlers always fire
+      // upon cancellation from main process, but it's safer to ensure cleanup.
+      ipcRenderer.removeAllListeners('copilot:stream-chunk')
+      ipcRenderer.removeAllListeners('copilot:stream-error')
+      ipcRenderer.removeAllListeners('copilot:stream-end')
+    }
+  },
   copyText: (text: string) => {
     clipboard.writeText(text)
   },

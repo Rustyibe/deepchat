@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import GithubCopilotSettings from '@/views/Settings/components/GithubCopilotSettings.vue'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -114,6 +115,15 @@ const router = createRouter({
           meta: {
             titleKey: 'routes.settings-about',
             icon: 'lucide:info'
+          }
+        },
+        {
+          path: 'copilot',
+          name: 'settings-copilot',
+          component: GithubCopilotSettings,
+          meta: {
+            titleKey: 'settings.copilot.title', // New i18n key
+            icon: 'simple-icons:githubcopilot'
           }
         }
       ]
