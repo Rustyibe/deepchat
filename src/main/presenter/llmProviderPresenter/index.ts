@@ -857,6 +857,25 @@ export class LLMProviderPresenter implements ILlmProviderPresenter {
     return response.content
   }
 
+  async optimizePrompt(prompt: string, model: string, providerId: string): Promise<string> {
+    const messages = [
+      {
+        role: 'system' as const,
+        content: `你是一个专业的Prompt优化专家，请严格遵循以下规则：
+1. 只优化用户提供的Prompt，不要直接回答问题
+2. 保持原始意图不变的前提下提升清晰度、具体性和结构
+3. 遵循Prompt Engineering最佳实践
+4. 输出只需包含优化后的Prompt，不要包含解释`
+      },
+      {
+        role: 'user' as const,
+        content: prompt
+      }
+    ]
+
+    return await this.generateCompletion(providerId, messages, model)
+  }
+
   async generateSummary(
     providerId: string,
     text: string,

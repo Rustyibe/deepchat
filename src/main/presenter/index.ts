@@ -256,11 +256,38 @@ ipcMain.handle(
         return { error: `Method "${method}" not found or not a function on "${name}"` }
       }
     } catch (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    e: any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      e: any
     ) {
       console.error('error on presenter handle', e) // 保留错误日志
       return { error: e.message || String(e) }
+    }
+  }
+)
+
+// Register optimize-prompt handler
+ipcMain.handle(
+  'optimize-prompt',
+  async (
+    event: IpcMainInvokeEvent,
+    data: { prompt: string; model: string; providerId: string }
+  ) => {
+    try {
+      const result = await presenter.llmproviderPresenter.optimizePrompt(
+        data.prompt,
+        data.model,
+        data.providerId
+      )
+      return {
+        success: true,
+        optimizedPrompt: result
+      }
+    } catch (error) {
+      console.error('Error optimizing prompt:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }
     }
   }
 )
