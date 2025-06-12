@@ -269,7 +269,7 @@ ipcMain.handle(
 ipcMain.handle(
   'optimize-prompt',
   async (
-    event: IpcMainInvokeEvent,
+    _event: IpcMainInvokeEvent,
     data: { prompt: string; model: string; providerId: string }
   ) => {
     try {
