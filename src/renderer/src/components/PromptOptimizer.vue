@@ -23,7 +23,7 @@
                             class="h-32" />
                     </div>
                     <div class="space-y-2">
-                        <Label>选择模型</Label>
+                        <Label>{{ t('promptOptimizer.selectModel') }}</Label>
                         <ModelSelect @update:model="handleModelSelect" />
                     </div>
                 </div>
@@ -33,7 +33,7 @@
                     </Button>
                     <Button :disabled="!selectedModel || isOptimizing" @click="handleSend">
                         <Icon icon="lucide:send" class="mr-2 h-4 w-4" />
-                        发送
+                        {{ t('promptOptimizer.send') }}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -153,7 +153,7 @@ const handleSend = async () => {
             optimizedPrompt.value = response.optimizedPrompt || props.originalPrompt
             showOptimizedResult.value = true
         } else {
-            throw new Error(response.error || '优化失败')
+            throw new Error(response.error || t('promptOptimizer.optimizeFailed'))
         }
     } catch (error) {
         console.error('优化提示词失败:', error)
@@ -177,7 +177,7 @@ const handleReoptimize = async () => {
         if (response.success) {
             optimizedPrompt.value = response.optimizedPrompt || props.originalPrompt
         } else {
-            throw new Error(response.error || '优化失败')
+            throw new Error(response.error || t('promptOptimizer.optimizeFailed'))
         }
     } catch (error) {
         console.error('重新优化提示词失败:', error)
